@@ -19,6 +19,7 @@ The project is still at an early development stage and may be unstable. It curre
 - [x] Switch between row and grid for categories
 - [x] Support for non-TV (sideloaded) apps
 - [x] Navigation sound feedback
+- [x] Remap dedicated remote buttons to installed apps
 - [ ] Force stop app
 
 ## Screenshots
@@ -56,7 +57,7 @@ $ adb shell pm enable com.google.android.tungsten.setupwraith
 ```
 
 #### Known issues
-On Chromecast with Google TV (maybe others), the "YouTube" remote button will stop working if the default launcher is disabled. As a workaround, you can use [Button Mapper](https://play.google.com/store/apps/details?id=flar2.homebutton) to remap it correctly.
+On Chromecast with Google TV (maybe others), dedicated remote buttons such as "YouTube" or "Apps" may stop launching their intended app if the default launcher is disabled. Open **Settings > Remote Button Mappings** in FLauncher to capture the button and choose an installed app. Older builds can use [Button Mapper](https://play.google.com/store/apps/details?id=flar2.homebutton) as an alternative workaround.
 
 ## Wallpaper
 Because Android's `WallpaperManager` is not available on some Android TV devices, FLauncher implements its own wallpaper management method.

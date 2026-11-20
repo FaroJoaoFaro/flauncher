@@ -21,6 +21,7 @@ import 'package:flauncher/providers/settings_service.dart';
 import 'package:flauncher/widgets/settings/applications_panel_page.dart';
 import 'package:flauncher/widgets/settings/categories_panel_page.dart';
 import 'package:flauncher/widgets/settings/flauncher_about_dialog.dart';
+import 'package:flauncher/widgets/settings/remote_button_mappings_panel_page.dart';
 import 'package:flauncher/widgets/settings/wallpaper_panel_page.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -54,6 +55,16 @@ class SettingsPanelPage extends StatelessWidget {
                 ],
               ),
               onPressed: () => Navigator.of(context).pushNamed(CategoriesPanelPage.routeName),
+            ),
+            TextButton(
+              child: Row(
+                children: [
+                  Icon(Icons.settings_remote),
+                  Container(width: 8),
+                  Text("Remote Button Mappings", style: Theme.of(context).textTheme.bodyText2),
+                ],
+              ),
+              onPressed: () => Navigator.of(context).pushNamed(RemoteButtonMappingsPanelPage.routeName),
             ),
             TextButton(
               child: Row(

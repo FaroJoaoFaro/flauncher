@@ -39,6 +39,34 @@ class FLauncherChannel {
   Future<bool> checkForGetContentAvailability() async =>
       await _methodChannel.invokeMethod("checkForGetContentAvailability");
 
+  Future<List<dynamic>> getRemoteButtonMappings() async =>
+      (await _methodChannel.invokeListMethod('getRemoteButtonMappings'))!;
+
+  Future<void> setRemoteButtonMapping(int keyCode, String packageName) async =>
+      await _methodChannel.invokeMethod('setRemoteButtonMapping', {
+        'keyCode': keyCode,
+        'packageName': packageName,
+      });
+
+  Future<void> clearRemoteButtonMapping(int keyCode) async =>
+      await _methodChannel.invokeMethod('clearRemoteButtonMapping', keyCode);
+
+  Future<void> startRemoteButtonCapture() async =>
+      await _methodChannel.invokeMethod('startRemoteButtonCapture');
+
+  Future<void> stopRemoteButtonCapture() async =>
+      await _methodChannel.invokeMethod('stopRemoteButtonCapture');
+
   void addAppsChangedListener(void Function(Map<dynamic, dynamic>) listener) =>
-      _eventChannel.receiveBroadcastStream().listen((event) => listener(event));
+      _eventChannel
+          .receiveBroadcastStream()
+          .map((event) => event as Map<dynamic, dynamic>)
+          .listen(listener);
+
+  StreamSubscription<Map<dynamic, dynamic>> addRemoteButtonCapturedListener(
+          void Function(Map<dynamic, dynamic>) listener) =>
+      _eventChannel
+          .receiveBroadcastStream()
+          .map((event) => event as Map<dynamic, dynamic>)
+          .listen(listener);
 }

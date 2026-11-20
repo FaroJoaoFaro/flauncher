@@ -71,6 +71,7 @@ class FLauncherApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MultiProvider(
         providers: [
+            Provider.value(value: _fLauncherChannel),
           ChangeNotifierProvider(
               create: (_) =>
                   SettingsService(_sharedPreferences, _firebaseCrashlytics, _firebaseAnalytics, _remoteConfig),

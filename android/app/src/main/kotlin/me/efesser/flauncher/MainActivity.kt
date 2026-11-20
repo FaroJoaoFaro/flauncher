@@ -29,6 +29,9 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.UserHandle
 import android.provider.Settings
+import android.view.KeyEvent
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -41,9 +44,15 @@ import java.io.Serializable
 
 private const val METHOD_CHANNEL = "me.efesser.flauncher/method"
 private const val EVENT_CHANNEL = "me.efesser.flauncher/event"
+private const val REMOTE_MAPPINGS_PREFS = "flauncher_remote_mappings"
+private const val REMOTE_MAPPING_PREFIX = "key_"
 
 class MainActivity : FlutterActivity() {
     val launcherAppsCallbacks = ArrayList<LauncherApps.Callback>()
+    private var buttonCaptureEnabled = false
+    private var eventSink: EventSink? = null
+    private val remoteMappings: SharedPreferences
+        get() = getSharedPreferences(REMOTE_MAPPINGS_PREFS, Context.MODE_PRIVATE)
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -56,6 +65,31 @@ class MainActivity : FlutterActivity() {
                 "uninstallApp" -> result.success(uninstallApp(call.arguments as String))
                 "isDefaultLauncher" -> result.success(isDefaultLauncher())
                 "checkForGetContentAvailability" -> result.success(checkForGetContentAvailability())
+                "getRemoteButtonMappings" -> result.success(getRemoteButtonMappings())
+                "setRemoteButtonMapping" -> {
+                    val arguments = call.arguments as Map<*, *>
+                    val keyCode = (arguments["keyCode"] as Number).toInt()
+                    val packageName = arguments["packageName"] as String
+                    remoteMappings.edit()
+                        .putString("$REMOTE_MAPPING_PREFIX$keyCode", packageName)
+                        .apply()
+                    result.success(true)
+                }
+                "clearRemoteButtonMapping" -> {
+                    val keyCode = (call.arguments as Number).toInt()
+                    remoteMappings.edit()
+                        .remove("$REMOTE_MAPPING_PREFIX$keyCode")
+                        .apply()
+                    result.success(true)
+                }
+                "startRemoteButtonCapture" -> {
+                    buttonCaptureEnabled = true
+                    result.success(true)
+                }
+                "stopRemoteButtonCapture" -> {
+                    buttonCaptureEnabled = false
+                    result.success(true)
+                }
                 else -> throw IllegalArgumentException()
             }
         }
@@ -64,6 +98,7 @@ class MainActivity : FlutterActivity() {
             lateinit var launcherAppsCallback: LauncherApps.Callback
             val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
             override fun onListen(arguments: Any?, events: EventSink) {
+                eventSink = events
                 launcherAppsCallback = object : LauncherApps.Callback() {
                     override fun onPackageRemoved(packageName: String, user: UserHandle) {
                         events.success(mapOf("action" to "PACKAGE_REMOVED", "packageName" to packageName))
@@ -92,10 +127,35 @@ class MainActivity : FlutterActivity() {
             }
 
             override fun onCancel(arguments: Any?) {
+                eventSink = null
                 launcherApps.unregisterCallback(launcherAppsCallback)
                 launcherAppsCallbacks.remove(launcherAppsCallback)
             }
         })
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            val keyCode = event.keyCode
+            if (buttonCaptureEnabled) {
+                buttonCaptureEnabled = false
+                eventSink?.success(mapOf(
+                    "action" to "REMOTE_BUTTON_CAPTURED",
+                    "keyCode" to keyCode,
+                    "keyLabel" to remoteButtonLabel(keyCode)
+                ))
+                return true
+            }
+
+            if (event.repeatCount == 0) {
+                val packageName = remoteMappings.getString("$REMOTE_MAPPING_PREFIX$keyCode", null)
+                if (!packageName.isNullOrBlank()) {
+                    launchApp(packageName)
+                    return true
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onDestroy() {
@@ -185,6 +245,31 @@ class MainActivity : FlutterActivity() {
     } catch (e: Exception) {
         false
     }
+
+    private fun getRemoteButtonMappings(): List<Map<String, Any>> =
+        remoteMappings.all
+            .filterKeys { it.startsWith(REMOTE_MAPPING_PREFIX) }
+            .mapNotNull { (key, packageName) ->
+                val keyCode = key.removePrefix(REMOTE_MAPPING_PREFIX).toIntOrNull()
+                val packageNameString = packageName as? String
+                if (keyCode != null && packageNameString != null) {
+                    mapOf(
+                        "keyCode" to keyCode,
+                        "keyLabel" to remoteButtonLabel(keyCode),
+                        "packageName" to packageNameString
+                    )
+                } else {
+                    null
+                }
+            }
+            .sortedBy { it["keyCode"] as Int }
+
+    private fun remoteButtonLabel(keyCode: Int): String =
+        KeyEvent.keyCodeToString(keyCode)
+            .removePrefix("KEYCODE_")
+            .replace('_', ' ')
+            .lowercase()
+            .replaceFirstChar { it.uppercase() }
 
     private fun drawableToByteArray(drawable: Drawable): ByteArray {
         fun drawableToBitmap(drawable: Drawable): Bitmap {
